@@ -1,4 +1,4 @@
-# Topside
+# Topside GUI
 
 Run the Iced GUI prototype:
 

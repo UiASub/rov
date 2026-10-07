@@ -1,6 +1,13 @@
 # rov
 Monorepo for UiASub next generation ROV. Contains both topside and rov-side.
 
+## Layout
+
+- `topside/gui/` — Iced operator interface
+- `topside/controller/` — Rust joystick service
+- `jetson/` — onboard services
+- `mcu/` — Zephyr project
+
 ## Sensors and cameras
 
 - Deepwater Exploration exploreHD USB camera
@@ -17,4 +24,4 @@ cargo run -p topside
 ```
 
 Iced GUI with simulated streams, telemetry, and four-axis controls.
-See [topside/README.md](topside/README.md).
+See [topside/gui/README.md](topside/gui/README.md).
