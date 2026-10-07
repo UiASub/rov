@@ -1,28 +1,18 @@
+mod debug;
+mod meter;
 mod preview;
+mod sensors;
+mod style;
 
 use iced::widget::{button, column, container, pick_list, row, slider, space, text};
-use iced::{Color, Element, Fill, Subscription, Theme};
+use iced::{Element, Fill, Subscription};
 use std::time::{Duration, Instant};
-
-const ACCENT: Color = Color::from_rgb(0.30, 0.80, 0.73);
-const MUTED: Color = Color::from_rgb(0.55, 0.61, 0.66);
+use style::{ACCENT, MUTED};
 
 fn main() -> iced::Result {
     iced::application(App::default, App::update, App::view)
         .title("UiASub · Topside")
-        .theme(|_: &App| {
-            Theme::custom(
-                "Topside",
-                iced::theme::Palette {
-                    background: Color::from_rgb(0.055, 0.067, 0.08),
-                    text: Color::from_rgb(0.88, 0.91, 0.93),
-                    primary: ACCENT,
-                    success: ACCENT,
-                    danger: Color::from_rgb(0.91, 0.35, 0.32),
-                    warning: Color::from_rgb(0.91, 0.68, 0.30),
-                },
-            )
-        })
+        .theme(|_: &App| style::theme())
         .subscription(App::subscription)
         .window_size((1360.0, 860.0))
         .run()
@@ -50,12 +40,21 @@ impl std::fmt::Display for Source {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Page {
+    Pilot,
+    Debug,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode {
     Manual,
     Automation,
 }
 #[derive(Debug, Clone)]
 enum Message {
+    Page(Page),
+    Freeze,
+    Resize(iced::Size),
     Tick(Instant),
     Layout(usize),
     Source(usize, Source),
@@ -67,6 +66,11 @@ enum Message {
 
 struct App {
     started: Instant,
+    page: Page,
+    width: f32,
+    frozen: bool,
+    sample: sensors::Sample,
+    sequence: u64,
     elapsed: f32,
     views: usize,
     sources: [Source; 4],
@@ -79,6 +83,11 @@ impl Default for App {
     fn default() -> Self {
         Self {
             started: Instant::now(),
+            page: Page::Pilot,
+            width: 1360.0,
+            frozen: false,
+            sample: sensors::Sample::demo(0.0, 0),
+            sequence: 0,
             elapsed: 0.0,
             views: 2,
             sources: [
@@ -95,12 +104,22 @@ impl Default for App {
 }
 impl App {
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(Duration::from_millis(100)).map(Message::Tick)
+        Subscription::batch([
+            iced::time::every(Duration::from_millis(100)).map(Message::Tick),
+            iced::window::resize_events().map(|(_, size)| Message::Resize(size)),
+        ])
     }
     fn update(&mut self, message: Message) {
         match message {
+            Message::Page(page) => self.page = page,
+            Message::Freeze => self.frozen = !self.frozen,
+            Message::Resize(size) => self.width = size.width,
             Message::Tick(now) => {
                 self.elapsed = now.duration_since(self.started).as_secs_f32();
+                self.sequence += 1;
+                if !self.frozen {
+                    self.sample = sensors::Sample::demo(self.elapsed, self.sequence);
+                }
                 if self.armed && self.mode == Mode::Automation {
                     self.command = [
                         0.25,
@@ -138,6 +157,25 @@ impl App {
                 text("TOPSIDE").size(11).color(MUTED)
             ]
             .spacing(3),
+            row![
+                button("Pilot")
+                    .padding([8, 20])
+                    .on_press(Message::Page(Page::Pilot))
+                    .style(if self.page == Page::Pilot {
+                        style::primary
+                    } else {
+                        style::secondary
+                    }),
+                button("Debug")
+                    .padding([8, 20])
+                    .on_press(Message::Page(Page::Debug))
+                    .style(if self.page == Page::Debug {
+                        style::primary
+                    } else {
+                        style::secondary
+                    }),
+            ]
+            .spacing(8),
             space::horizontal(),
             text("SIMULATION").size(12).color(ACCENT),
             text(format!(
@@ -157,15 +195,19 @@ impl App {
                 button(text(count.to_string()).size(13))
                     .padding([6, 14])
                     .style(if self.views == count {
-                        button::primary
+                        style::primary
                     } else {
-                        button::secondary
+                        style::secondary
                     })
                     .on_press(Message::Layout(count)),
             );
         }
         let streams: Element<'_, Message> = match self.views {
             1 => self.stream(0),
+            2 if self.width < 1100.0 => column![self.stream(0), self.stream(1)]
+                .spacing(12)
+                .height(Fill)
+                .into(),
             2 => row![self.stream(0), self.stream(1)]
                 .spacing(12)
                 .height(Fill)
@@ -186,11 +228,17 @@ impl App {
             .spacing(12)
             .width(Fill)
             .height(Fill);
-        let body = row![video, self.sidebar()].spacing(20).height(Fill);
+        let body: Element<'_, Message> = match self.page {
+            Page::Pilot => row![video, self.sidebar()].spacing(20).height(Fill).into(),
+            Page::Debug => debug::view(self),
+        };
         let footer = row![
             text("JETSON  —").size(12).color(MUTED),
             text("MCU  —").size(12).color(MUTED),
             text("JOYSTICK  —").size(12).color(MUTED),
+            button("Disarm")
+                .on_press(Message::Neutral)
+                .style(style::danger),
             space::horizontal(),
             text("SURGE / SWAY / HEAVE / YAW").size(11).color(MUTED)
         ]
@@ -223,7 +271,7 @@ impl App {
             .padding(12)
             .width(Fill)
             .height(Fill)
-            .style(container::rounded_box)
+            .style(style::panel)
             .into()
     }
     fn sidebar(&self) -> Element<'_, Message> {
@@ -231,16 +279,16 @@ impl App {
             button("Manual")
                 .on_press(Message::Mode(Mode::Manual))
                 .style(if self.mode == Mode::Manual {
-                    button::primary
+                    style::primary
                 } else {
-                    button::secondary
+                    style::secondary
                 }),
             button("Automation")
                 .on_press(Message::Mode(Mode::Automation))
                 .style(if self.mode == Mode::Automation {
-                    button::primary
+                    style::primary
                 } else {
-                    button::secondary
+                    style::secondary
                 }),
         ]
         .spacing(8);
@@ -254,7 +302,7 @@ impl App {
                 space::horizontal(),
                 button(if self.armed { "Disarm" } else { "Arm" })
                     .on_press(Message::Arm)
-                    .style(button::secondary)
+                    .style(style::secondary)
             ]
             .align_y(iced::Center),
         ]
@@ -267,9 +315,15 @@ impl App {
                 .step(0.01_f32)
                 .into()
             } else {
-                iced::widget::progress_bar(-1.0..=1.0, self.command[index])
-                    .girth(4)
-                    .into()
+                iced::widget::canvas(meter::Meter {
+                    value: self.command[index],
+                    min: -1.0,
+                    max: 1.0,
+                    color: ACCENT,
+                })
+                .width(Fill)
+                .height(12)
+                .into()
             };
             controls = controls.push(
                 column![
@@ -288,16 +342,22 @@ impl App {
         controls = controls.push(
             button("Neutral / disarm")
                 .on_press(Message::Neutral)
-                .style(button::danger)
+                .style(style::danger)
                 .width(Fill)
                 .padding(10),
         );
         let telemetry = column![
             text("Telemetry").size(18),
-            metric("Depth", "4.20 m"),
-            metric("Heading", "128.0°"),
-            metric("DVL velocity", "0.12 m/s"),
-            metric("Pressure", "1.43 bar"),
+            metric("Depth", &format!("{:.2} m", self.sample.depth)),
+            metric("Heading", &format!("{:.1}°", self.sample.heading)),
+            metric(
+                "DVL velocity",
+                &format!("{:.2} m/s", self.sample.velocity[0])
+            ),
+            metric(
+                "Pressure",
+                &format!("{:.2} bar", self.sample.pressure / 100.0)
+            ),
             metric("Attitude", "Level"),
         ]
         .spacing(16);
@@ -317,11 +377,11 @@ impl App {
         .into()
     }
 }
-fn metric<'a>(label: &'a str, value: &'a str) -> Element<'a, Message> {
+fn metric<'a>(label: &'a str, value: &str) -> Element<'a, Message> {
     row![
         text(label).size(13).color(MUTED),
         space::horizontal(),
-        text(value).size(13)
+        text(value.to_owned()).size(13)
     ]
     .into()
 }
@@ -329,13 +389,30 @@ fn panel<'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
     container(content)
         .padding(18)
         .width(Fill)
-        .style(container::rounded_box)
+        .style(style::panel)
         .into()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn freezing_sensor_display_keeps_control_timing_active() {
+        let mut app = App::default();
+        app.update(Message::Mode(Mode::Automation));
+        app.update(Message::Arm);
+        app.update(Message::Freeze);
+        app.update(Message::Page(Page::Debug));
+        app.update(Message::Tick(app.started + Duration::from_secs(1)));
+        assert_eq!(app.sample.sequence, 0);
+        assert_ne!(app.command, [0.0; 4]);
+        assert!(app.armed);
+        app.update(Message::Freeze);
+        app.update(Message::Tick(app.started + Duration::from_secs(2)));
+        assert_eq!(app.sample.sequence, 2);
+        assert_eq!(app.sample.time, 2.0);
+    }
 
     #[test]
     fn disarm_and_mode_changes_prevent_retaining_motion() {

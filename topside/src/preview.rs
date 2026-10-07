@@ -1,6 +1,6 @@
-use crate::Source;
+use crate::{Source, style};
 use iced::widget::canvas::{self, Frame, Geometry, Path, Stroke};
-use iced::{Color, Point, Rectangle, Renderer, Theme, mouse};
+use iced::{Point, Rectangle, Renderer, Theme, mouse};
 
 pub struct Preview {
     pub source: Source,
@@ -18,15 +18,11 @@ impl<Message> canvas::Program<Message> for Preview {
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
         let (w, h) = (bounds.width, bounds.height);
-        frame.fill_rectangle(
-            Point::ORIGIN,
-            bounds.size(),
-            Color::from_rgb(0.025, 0.045, 0.055),
-        );
+        frame.fill_rectangle(Point::ORIGIN, bounds.size(), style::BACKGROUND);
         if self.source == Source::None {
             return vec![frame.into_geometry()];
         }
-        let grid = Color::from_rgb(0.09, 0.16, 0.18);
+        let grid = style::BORDER.scale_alpha(0.5);
         for i in 1..12 {
             let x = w * i as f32 / 12.0;
             frame.stroke(
@@ -42,7 +38,7 @@ impl<Message> canvas::Program<Message> for Preview {
             );
         }
         let center = Point::new(w / 2.0, h / 2.0);
-        let color = Color::from_rgb(0.30, 0.66, 0.61);
+        let color = style::ACCENT.scale_alpha(0.65);
         if self.source == Source::Sonar {
             let origin = Point::new(w / 2.0, h * 0.90);
             let radius = (w * 0.46).min(h * 0.80);
