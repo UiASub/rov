@@ -9,3 +9,12 @@ Monorepo for UiASub next generation ROV. Contains both topside and rov-side.
 - Bar30/Bar100 depth and pressure sensor
 - VectorNav VN-100 IMU/AHRS
 - Sonoptix ECHO multibeam imaging sonar
+
+## Topside prototype
+
+```sh
+cargo run -p topside
+```
+
+Iced GUI with simulated streams, telemetry, and four-axis controls.
+See [topside/README.md](topside/README.md).
