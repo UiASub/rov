@@ -1,0 +1,4 @@
+/.zephyr/
+/build*/
+/keys/
+__pycache__/

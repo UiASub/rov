@@ -1,0 +1,10 @@
+mainmenu "ROV blinky"
+
+config ROV_OTA_CONFIRM
+	bool "Confirm a trial image after healthy startup"
+	default y
+	depends on BOOTLOADER_MCUBOOT
+	help
+	  Disable only to deliberately exercise trial boot rollback.
+
+source "Kconfig.zephyr"
