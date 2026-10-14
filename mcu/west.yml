@@ -1,0 +1,17 @@
+manifest:
+  version: "1.2"
+  projects:
+    - name: zephyr
+      url: https://github.com/zephyrproject-rtos/zephyr
+      revision: v4.2.0
+      clone-depth: 1
+      import:
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_stm32
+          - mcuboot
+          - mbedtls
+          - zcbor
+  self:
+    path: manifest
