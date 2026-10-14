@@ -135,7 +135,8 @@ def main():
     parser.add_argument("--port", type=int, default=1337)
     parser.add_argument("--wait", type=int, default=120)
     parser.add_argument("--no-reset", action="store_true")
-    parser.add_argument("--mcumgr", default=os.environ.get("MCUMGR", str(workspace / ".venv/bin/mcumgr")))
+    mcumgr_path = ".venv/Scripts/mcumgr.exe" if os.name == "nt" else ".venv/bin/mcumgr"
+    parser.add_argument("--mcumgr", default=os.environ.get("MCUMGR", str(workspace / mcumgr_path)))
     args = parser.parse_args()
     if not 1 <= args.port <= 65535 or args.wait <= 0:
         parser.error("port must be 1..65535 and wait must be positive")

@@ -44,6 +44,34 @@ ST-LINK USB device to WSL for initial flashing; give your user access to
 ST-LINK using the distro's udev rules. Ethernet updates need a route from WSL
 to the board; see [OTA.md](OTA.md) for mirrored networking or a LAN route.
 
+## Install on native Windows
+
+From PowerShell in the repo root (Windows 10/11 x64):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\mcu\scripts\install-zephyr.ps1
+.\mcu\scripts\build.ps1
+.\mcu\scripts\flash.ps1
+& .\mcu\.zephyr\.venv\Scripts\python.exe .\mcu\scripts\ota.py --host 10.77.0.2
+```
+
+The installer uses [WinGet](https://learn.microsoft.com/windows/package-manager/winget/)
+to install missing Git, uv, Ninja, gperf, dtc, wget, 7-Zip and Go; Windows may
+request elevation for their installers. WinGet is supplied by Windows App
+Installer; if unavailable the script gives its installation link. It then
+creates the same pinned Zephyr environment and SDK, installs MCUmgr, and
+installs checksum-verified xPack OpenOCD locally (the Windows SDK lacks host
+tools). CMake and Python are supplied by the venv and uv. Existing tools are
+reused, and newly installed PATH entries are refreshed for the current run.
+Long-path Git support is enabled for setup without changing global Git settings.
+
+Use `-Workspace PATH`, `-SkipSystem` or `-SkipSdk` for the same customizations as
+Linux. `build.ps1 -Blinky` builds standalone blinky; `build.ps1 -Key PATH`
+selects a signing key; `flash.ps1 -Blinky` flashes the standalone image. Initial
+flashing also needs a working ST-LINK USB driver. If using ST's programmer,
+install [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html)
+and use `flash.ps1 -Runner stm32cubeprogrammer`.
+
 ## Blinky
 
 ```sh
@@ -76,6 +104,8 @@ python3 mcu/scripts/ota.py --host 10.77.0.2
 ./mcu/scripts/test.sh
 # Optional: Rust-based upstream MCUboot power-loss / rollback simulator.
 ./mcu/scripts/test-mcuboot.sh
+# PowerShell logic tests (mocked package installation; no system changes).
+pwsh -NoProfile -File mcu/tests/test_install_windows.ps1
 ```
 
 The first command checks installer safety/reruns, updater failure paths and the

@@ -110,7 +110,7 @@ class UpdateTest(unittest.TestCase):
                 ota.image_hash(self.image)
 
     def test_real_cli_udp_upload_test_reset(self):
-        executable = Path(os.environ.get("MCUMGR", SCRIPT.parents[1] / ".zephyr/.venv/bin/mcumgr"))
+        executable = Path(os.environ.get("MCUMGR", SCRIPT.parents[1] / (".zephyr/.venv/Scripts/mcumgr.exe" if os.name == "nt" else ".zephyr/.venv/bin/mcumgr")))
         if not executable.is_file():
             self.skipTest("Install OTA tools to exercise the real CLI")
         import cbor2
