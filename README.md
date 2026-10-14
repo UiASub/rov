@@ -6,7 +6,7 @@ Monorepo for UiASub next generation ROV. Contains both topside and rov-side.
 - `topside/gui/` — Iced operator interface
 - `topside/controller/` — Rust joystick service
 - `jetson/` — onboard services
-- `mcu/` — Zephyr project
+- `mcu/` — [Zephyr firmware and setup](mcu/README.md) for NUCLEO-H755ZI-Q
 
 ## Sensors and cameras
 

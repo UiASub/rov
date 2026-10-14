@@ -41,3 +41,16 @@ ST-LINK USB device to WSL for initial flashing; install Linux OpenOCD and give
 your user access to ST-LINK using the distro's udev rules. Ethernet updates
 need a route from WSL to the board; mirrored networking on supported Windows
 11 systems is the easiest direct-link setup. Native Windows is not required.
+
+## Blinky
+
+```sh
+./mcu/scripts/build.sh
+west flash -d mcu/build-blinky --runner openocd
+```
+
+The green user LED (LD1/PB0, upstream `led0` alias) toggles every 500 ms.
+USART3 logs appear through ST-LINK at 115200 baud. The upstream board definition
+provides clocks and pins; `boards/` holds application-specific configuration.
+The build script finds its workspace without requiring shell activation and
+accepts extra CMake arguments after the script name.
