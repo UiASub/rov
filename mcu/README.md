@@ -45,12 +45,42 @@ need a route from WSL to the board; mirrored networking on supported Windows
 ## Blinky
 
 ```sh
-./mcu/scripts/build.sh
-west flash -d mcu/build-blinky --runner openocd
+./mcu/scripts/build.sh --blinky
+./mcu/scripts/flash.sh --blinky
 ```
 
-The green user LED (LD1/PB0, upstream `led0` alias) toggles every 500 ms.
+The green user LED (LD1/PA5, upstream `led0` alias) toggles every 500 ms.
 USART3 logs appear through ST-LINK at 115200 baud. The upstream board definition
 provides clocks and pins; `boards/` holds application-specific configuration.
 The build script finds its workspace without requiring shell activation and
 accepts extra CMake arguments after the script name.
+
+
+## Ethernet updates
+
+`./mcu/scripts/build.sh` now defaults to a signed MCUboot sysbuild with Ethernet
+OTA. Plain blinky remains available with `--blinky`. See [OTA.md](OTA.md) for
+initial USB provisioning, signing keys, Linux/WSL networking, normal updates,
+rollback behavior and the board acceptance checklist.
+
+```sh
+# Requires Go; installs a pinned Apache MCUmgr CLI in the workspace venv.
+./mcu/scripts/install-ota-tools.sh
+./mcu/scripts/build.sh
+python3 mcu/scripts/ota.py --host 10.77.0.2
+```
+
+## Local verification
+
+```sh
+./mcu/scripts/test.sh
+# Optional: Rust-based upstream MCUboot power-loss / rollback simulator.
+./mcu/scripts/test-mcuboot.sh
+```
+
+The first command checks installer safety/reruns, updater failure paths and the
+real MCUmgr CLI over loopback UDP (including a dropped upload packet), the trial
+confirmation policy, both target builds, generated partitions and watchdog
+settings, image size and RSA signature. The simulator runs MCUboot's RSA and
+swap-offset tests across its supported simulated flash geometries. Neither
+suite exercises the physical H755 flash controller, PHY, ST-LINK or WSL host.
