@@ -82,7 +82,6 @@ Bump `VERSION` before a release so the new version is visible in logs and
 a board provisioned with the development key:
 
 ```sh
-./mcu/scripts/install-ota-tools.sh
 ./mcu/scripts/build.sh
 python3 mcu/scripts/ota.py --host 10.77.0.2
 # Or select a particular signed artifact:

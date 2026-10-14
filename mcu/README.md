@@ -7,40 +7,42 @@ The M4 core is not used. Zephyr 4.2.0 and SDK 0.17.2 match K2.
 
 ## Install on Linux or WSL2
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and host
-packages first. Run the appropriate command yourself:
-
-```sh
-# Debian/Ubuntu (including Ubuntu in WSL2)
-sudo apt-get install --no-install-recommends \
-  git ninja-build make gcc g++ xz-utils wget file gperf device-tree-compiler openocd
-# Fedora
-sudo dnf install git ninja-build make gcc gcc-c++ xz wget file gperf dtc openocd
-# Arch/CachyOS
-sudo pacman -S --needed git ninja make gcc xz wget file gperf dtc openocd
-```
-
-From the repo root:
+Run one command from the repo root as your normal user:
 
 ```sh
 ./mcu/scripts/install-zephyr.sh
+```
+
+Supported: Ubuntu/Debian, Arch and Arch derivatives (including CachyOS), Fedora,
+and those distributions inside WSL2. The installer selects apt, pacman or dnf
+and requests sudo only if host packages are missing. It installs the compiler,
+Ninja, Git, download/archive tools, gperf, dtc, OpenOCD and Go; bootstraps
+[uv](https://docs.astral.sh/uv/getting-started/installation/) if missing; creates
+a uv-managed Python 3.12 venv; installs pinned west and CMake in that venv;
+fetches Zephyr and the board's modules; installs the ARM SDK; and installs the
+pinned Apache MCUmgr CLI for Ethernet updates. You do not need a system Python
+or CMake installation, or a separate OTA tools setup step.
+
+The script can be rerun after an interrupted install. It installs required
+packages without a general OS upgrade and never deletes workspaces. Arch
+systems should have up-to-date package databases from their normal system
+updates. Use `--skip-system` when host tools are already managed for you,
+`--skip-sdk` for an existing toolchain, or `--workspace PATH` for an external
+workspace (set `ZEPHYR_WORKSPACE=PATH` for subsequent commands). A different
+manifest is rejected before any installations or workspace changes. Generated
+dependencies, SDK, virtual environment and builds are ignored by git.
+
+Activation is optional for the build and flash wrappers:
+
+```sh
 source mcu/.zephyr/.venv/bin/activate
 ```
 
-The script uses uv-managed Python 3.12, pins west and CMake, fetches only the
-modules needed for this board, and installs the ARM SDK. It can be rerun after
-an interrupted install. It does not upgrade OS packages or delete workspaces.
-Use `--workspace PATH` (and `ZEPHYR_WORKSPACE=PATH` for subsequent builds) for
-an external workspace, or `--skip-sdk` for an existing toolchain. A different
-manifest is rejected rather than overwriting another project's workspace.
-Generated dependencies, SDK, virtual environment and builds are ignored by git.
-
 On WSL2, keep the checkout in the Linux filesystem (e.g. `~/dev/rov`). Use
 [usbipd-win](https://learn.microsoft.com/windows/wsl/connect-usb) to attach the
-ST-LINK USB device to WSL for initial flashing; install Linux OpenOCD and give
-your user access to ST-LINK using the distro's udev rules. Ethernet updates
-need a route from WSL to the board; mirrored networking on supported Windows
-11 systems is the easiest direct-link setup. Native Windows is not required.
+ST-LINK USB device to WSL for initial flashing; give your user access to
+ST-LINK using the distro's udev rules. Ethernet updates need a route from WSL
+to the board; see [OTA.md](OTA.md) for mirrored networking or a LAN route.
 
 ## Blinky
 
@@ -64,8 +66,6 @@ initial USB provisioning, signing keys, Linux/WSL networking, normal updates,
 rollback behavior and the board acceptance checklist.
 
 ```sh
-# Requires Go; installs a pinned Apache MCUmgr CLI in the workspace venv.
-./mcu/scripts/install-ota-tools.sh
 ./mcu/scripts/build.sh
 python3 mcu/scripts/ota.py --host 10.77.0.2
 ```
